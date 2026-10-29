@@ -1,0 +1,7 @@
+bind "T" {
+    Run "terminal-theme-switch" "cycle" {
+        floating true
+        close_on_exit true
+    }
+    SwitchToMode "normal";
+}

@@ -1,0 +1,6 @@
+#!/bin/sh
+self=$0
+if [ -L "$self" ]; then
+    self=$(readlink -f "$self")
+fi
+exec python3 "$(dirname "$self")/../terminal-theme-switch.py" "$@"
