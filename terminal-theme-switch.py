@@ -18,8 +18,7 @@ else:
         os.environ.get("XDG_STATE_HOME", Path.home() / ".local" / "state")
     )
 
-# Keep the original data directory so integrations that still read the old
-# path keep working while they are migrated to this plugin.
+# Use the existing data directory so old and new integrations share state.
 STATE_FILE = state_root / "terminal-theme" / "state"
 
 
