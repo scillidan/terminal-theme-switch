@@ -11,8 +11,10 @@ mkdir -p "$data" "$bin"
 cp "$src/terminal-theme-switch.py" "$data/"
 cp -R "$src/integrations" "$data/"
 cp -R "$src/bin" "$data/"
-chmod +x "$data/bin/terminal-theme-switch"
-ln -sfn "$data/bin/terminal-theme-switch" "$bin/$name"
+for launcher in terminal-theme-switch opencode-theme yazi-theme; do
+    chmod +x "$data/bin/$launcher"
+    ln -sfn "$data/bin/$launcher" "$bin/$launcher"
+done
 
 # Zellij's Run action uses the Windows-style name on both platforms.
 cat >"$data/$name.cmd" <<EOF
