@@ -1,0 +1,3 @@
+#!/bin/sh
+theme=$(terminal-theme-switch alacritty) || exit 1
+exec alacritty --option="general.import=['$theme']" "$@"

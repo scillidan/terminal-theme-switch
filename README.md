@@ -18,8 +18,9 @@ Linux:
 ./install.sh
 ```
 
-The installer puts `terminal-theme-switch`, `opencode-theme`, and `yazi-theme`
-on `PATH`. Keep `terminal-theme-switch` on `PATH` when using any integration.
+The installer puts `terminal-theme-switch`, `opencode-theme`, `yazi-theme`, and
+`alacritty-theme` on `PATH`. Keep `terminal-theme-switch` on `PATH` when using
+any integration.
 
 ## Usage
 
@@ -32,6 +33,7 @@ terminal-theme-switch system
 terminal-theme-switch path     # print the plugin directory
 terminal-theme-switch yazi     # print a YAZI_CONFIG_HOME overlay for this appearance
 terminal-theme-switch alacritty # print the stable Alacritty theme import
+alacritty-theme                # launch Alacritty with the current theme
 ```
 
 State file: `%LOCALAPPDATA%\terminal-theme-switch\state` on Windows,
@@ -50,11 +52,12 @@ to a stable runtime file and prints its path:
 - Linux: `$XDG_STATE_HOME/terminal-theme-switch/alacritty.toml`, or
   `~/.local/state/terminal-theme-switch/alacritty.toml`
 
-Import that file from Alacritty without adding a second main config. The launchers in
-`Share/scripts/win/alacritty.cmd` and `Share/scripts/alacritty.sh` pass it through
-Alacritty's `--option "general.import=[...]"`; they also select the platform shell and
-working directory. Every `dark`, `light`, `system`, `cycle`, or `refresh` command updates
-the same file so Alacritty's `live_config_reload` can follow changes.
+Import that file from Alacritty without adding a second main config. `alacritty-theme`
+syncs it and passes it through `--option=general.import=[...]`. Personal wrappers in
+`Share/scripts/win/alacritty.cmd` and `Share/scripts/arch/alacritty.sh` add the
+platform config, working directory, and shell. Every `dark`, `light`, `system`, `cycle`,
+or `refresh` command updates the same file so Alacritty's `live_config_reload` can
+follow changes.
 
 The source palettes live in `~/Share/dotfiles/.config/alacritty/themes`:
 
