@@ -12,7 +12,7 @@ if wezterm.target_triple == "x86_64-pc-windows-msvc" then
 else
 	state_root = os.getenv("XDG_STATE_HOME") or (os.getenv("HOME") .. "/.local/state")
 end
-local state_file = state_root .. "/terminal-theme/state"
+local state_file = state_root .. "/terminal-theme-switch/state"
 local last_published
 
 local function read_theme_state()

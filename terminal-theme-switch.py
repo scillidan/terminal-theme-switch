@@ -19,16 +19,30 @@ else:
         os.environ.get("XDG_STATE_HOME", Path.home() / ".local" / "state")
     )
 
-# Use the existing data directory so old and new integrations share state.
-STATE_FILE = state_root / "terminal-theme" / "state"
+STATE_DIR = state_root / "terminal-theme-switch"
+STATE_FILE = STATE_DIR / "state"
+LEGACY_STATE_FILE = state_root / "terminal-theme" / "state"
+INTEGRATIONS_DIR = Path(__file__).parent / "integrations"
+ALACRITTY_THEMES_DIR = (
+    Path.home() / "Share" / "dotfiles" / ".config" / "alacritty" / "themes"
+)
+ALACRITTY_THEME_NAMES = {"dark": "builtin_dark.toml", "light": "one_light.toml"}
+
+
+def _read_mode(path):
+    try:
+        mode = path.read_text(encoding="utf-8").splitlines()[0].strip()
+        return mode if mode in MODES else "system"
+    except (OSError, IndexError):
+        return None
 
 
 def saved_mode():
-    try:
-        mode = STATE_FILE.read_text(encoding="utf-8").splitlines()[0].strip()
-        return mode if mode in MODES else "system"
-    except (OSError, IndexError):
-        return "system"
+    for path in (STATE_FILE, LEGACY_STATE_FILE):
+        mode = _read_mode(path)
+        if mode is not None:
+            return mode
+    return "system"
 
 
 def system_appearance():
@@ -80,6 +94,39 @@ def system_appearance():
 def current_appearance():
     mode = saved_mode()
     return system_appearance() if mode == "system" else mode
+
+
+def _replace_with_retry(temporary, target):
+    # Windows readers can briefly hold the destination without delete sharing.
+    for attempt in range(100):
+        try:
+            os.replace(temporary, target)
+            return
+        except PermissionError:
+            if os.name != "nt" or attempt == 99:
+                temporary.unlink(missing_ok=True)
+                raise
+            time.sleep(0.01)
+
+
+def alacritty_theme_source(appearance):
+    try:
+        name = ALACRITTY_THEME_NAMES[appearance]
+    except KeyError:
+        raise ValueError(f"unknown appearance: {appearance}") from None
+    return ALACRITTY_THEMES_DIR / name
+
+
+def sync_alacritty(appearance):
+    source = alacritty_theme_source(appearance)
+    if not source.is_file():
+        raise SystemExit(f"alacritty: cannot find theme source {source}")
+    target = STATE_DIR / "alacritty.toml"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temporary = target.with_name(f".{target.name}.{os.getpid()}.tmp")
+    shutil.copyfile(source, temporary)
+    _replace_with_retry(temporary, target)
+    return target
 
 
 def yazi_config_dir():
@@ -170,7 +217,7 @@ def yazi_config_home(appearance=None):
     if not flavor:
         raise SystemExit("yazi: no [flavor] light/dark in theme.toml")
 
-    overlay = state_root / "terminal-theme" / "yazi" / appearance
+    overlay = STATE_DIR / "yazi" / appearance
     overlay.mkdir(parents=True, exist_ok=True)
     for name in ("plugins", "flavors"):
         source = config / name
@@ -211,29 +258,21 @@ def sync_zellij(appearance):
 
 def refresh(mode):
     appearance = system_appearance() if mode == "system" else mode
-    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
     temporary = STATE_FILE.with_name(f".{STATE_FILE.name}.{os.getpid()}.tmp")
     temporary.write_text(f"{mode}\n{appearance}\n", encoding="utf-8")
-    # Windows readers can briefly hold the destination without delete sharing.
-    for attempt in range(100):
-        try:
-            os.replace(temporary, STATE_FILE)
-            break
-        except PermissionError:
-            if os.name != "nt" or attempt == 99:
-                temporary.unlink(missing_ok=True)
-                raise
-            time.sleep(0.01)
+    _replace_with_retry(temporary, STATE_FILE)
+    sync_alacritty(appearance)
     sync_zellij(appearance)
     return appearance
 
 
 def main():
     command = sys.argv[1] if len(sys.argv) > 1 else "get"
-    if command not in (*MODES, "get", "refresh", "cycle", "path", "yazi"):
+    if command not in (*MODES, "get", "refresh", "cycle", "path", "yazi", "alacritty"):
         raise SystemExit(
             f"usage: {Path(sys.argv[0]).name} "
-            "[get|refresh|cycle|system|dark|light|path|yazi]"
+            "[get|refresh|cycle|system|dark|light|path|yazi|alacritty]"
         )
 
     if command == "path":
@@ -244,6 +283,10 @@ def main():
 
     if command == "yazi":
         print(yazi_config_home())
+        return
+
+    if command == "alacritty":
+        print(sync_alacritty(current_appearance()))
         return
 
     mode = saved_mode()

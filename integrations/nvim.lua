@@ -7,7 +7,7 @@ if vim.fn.has("win32") == 1 then
 else
 	state_root = vim.env.XDG_STATE_HOME or (vim.env.HOME .. "/.local/state")
 end
-local state_file = state_root .. "/terminal-theme/state"
+local state_file = state_root .. "/terminal-theme-switch/state"
 local last_appearance
 
 local function apply(appearance)

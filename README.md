@@ -1,6 +1,7 @@
 # terminal-theme-switch
 
-Switch the shared terminal theme between system, dark, and light.
+Switch the shared terminal theme between system, dark, and light across WezTerm,
+Alacritty, Zellij, Neovim, OpenCode, and Yazi.
 
 ## Install
 
@@ -30,12 +31,41 @@ terminal-theme-switch light
 terminal-theme-switch system
 terminal-theme-switch path     # print the plugin directory
 terminal-theme-switch yazi     # print a YAZI_CONFIG_HOME overlay for this appearance
+terminal-theme-switch alacritty # print the stable Alacritty theme import
 ```
 
-State file: `%LOCALAPPDATA%\terminal-theme\state` on Windows,
-`$XDG_STATE_HOME/terminal-theme/state` elsewhere.
+State file: `%LOCALAPPDATA%\terminal-theme-switch\state` on Windows,
+`$XDG_STATE_HOME/terminal-theme-switch/state` elsewhere. The previous
+`terminal-theme` directory is still read once as a fallback so an existing saved
+mode is preserved.
 
 ## Application integrations
+
+### Alacritty
+
+`terminal-theme-switch alacritty` writes the current WezTerm-compatible palette
+to a stable runtime file and prints its path:
+
+- Windows: `%LOCALAPPDATA%\terminal-theme-switch\alacritty.toml`
+- Linux: `$XDG_STATE_HOME/terminal-theme-switch/alacritty.toml`, or
+  `~/.local/state/terminal-theme-switch/alacritty.toml`
+
+Import that file from Alacritty without adding a second main config. The launchers in
+`Share/scripts/win/alacritty.cmd` and `Share/scripts/alacritty.sh` pass it through
+Alacritty's `--option "general.import=[...]"`; they also select the platform shell and
+working directory. Every `dark`, `light`, `system`, `cycle`, or `refresh` command updates
+the same file so Alacritty's `live_config_reload` can follow changes.
+
+The source palettes live in `~/Share/dotfiles/.config/alacritty/themes`:
+
+- `builtin_dark.toml`: WezTerm `Builtin Dark`
+- `one_light.toml`: WezTerm `One Light (Gogh)`
+
+Both files are generated from the installed WezTerm's `wezterm.color.get_builtin_schemes()`
+API, so the normal and bright ANSI colors, foreground, background, cursor, and selection
+colors match WezTerm. Regenerate them with
+`~/Share/dotfiles/.config/alacritty/themes/export-from-wezterm.lua` if WezTerm's builtin
+definitions change.
 
 ### Bash, OpenCode, and Yazi
 
