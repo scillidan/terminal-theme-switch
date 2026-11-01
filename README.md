@@ -18,6 +18,9 @@ Linux:
 ./install.sh
 ```
 
+To remove the installed files and launcher symlinks, run `./uninstall.sh`. The
+state file under `$XDG_STATE_HOME` is kept.
+
 The installer puts `terminal-theme-switch`, `opencode-theme`, `yazi-theme`, and
 `alacritty-theme` on `PATH`. Keep `terminal-theme-switch` on `PATH` when using
 any integration.
