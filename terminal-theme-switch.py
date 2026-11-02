@@ -23,7 +23,9 @@ STATE_DIR = state_root / "terminal-theme-switch"
 STATE_FILE = STATE_DIR / "state"
 LEGACY_STATE_FILE = state_root / "terminal-theme" / "state"
 INTEGRATIONS_DIR = Path(__file__).parent / "integrations"
-USERHOME = Path(os.environ.get("USERHOME") or Path.home())
+_userhome = os.environ.get("USERHOME")
+# A drive-only value such as "E:" is drive-relative in pathlib; keep it absolute.
+USERHOME = Path(_userhome + os.sep) if _userhome else Path.home()
 ALACRITTY_THEMES_DIR = (
     USERHOME / "Share" / "dotfiles" / ".config" / "alacritty" / "themes"
 )

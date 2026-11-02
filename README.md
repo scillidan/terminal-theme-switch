@@ -6,31 +6,54 @@ Keypirinha.
 
 ## Install
 
-Windows:
+Requirements: Python 3 on `PATH` (`python3` on Linux, `python` on Windows).
+The Linux installer also needs a POSIX shell plus the standard `cp` and `ln`
+commands.
+
+Windows (Scoop):
 
 ```pwsh
 scoop bucket add bash https://github.com/scillidan/scoop-bash
 scoop install bash/terminal-theme-switch
 ```
 
-Linux:
+Uninstall on Windows:
+
+```pwsh
+scoop uninstall terminal-theme-switch
+```
+
+Linux (run from this checkout):
 
 ```sh
 ./install.sh
 ```
 
-To remove the installed files and launcher symlinks, run `./uninstall.sh`. The
-state file under `$XDG_STATE_HOME` is kept.
+Uninstall on Linux (from this checkout):
 
-The installer puts `terminal-theme-switch`, `opencode-theme`, `yazi-theme`,
-`alacritty-theme`, and `eilmeldung-theme` on `PATH`. On Windows the Scoop
-package also provides `keypirinha-theme`. Keep `terminal-theme-switch` on `PATH`
-when using any integration.
+```sh
+./uninstall.sh
+```
+
+`install.sh` copies the tool to
+`${XDG_DATA_HOME:-$HOME/.local/share}/terminal-theme-switch` and links
+`terminal-theme-switch`, `opencode-theme`, `yazi-theme`, `alacritty-theme`, and
+`eilmeldung-theme` into `${XDG_BIN_HOME:-$HOME/.local/bin}`. `uninstall.sh`
+removes those links and the copied data. Both uninstall paths keep the state
+file under `$XDG_STATE_HOME` (or `~/.local/state`) on Linux or
+`%LOCALAPPDATA%\terminal-theme-switch` on Windows, so the saved mode survives a
+reinstall.
+
+On Linux, `install.sh` puts `terminal-theme-switch`, `opencode-theme`,
+`yazi-theme`, `alacritty-theme`, and `eilmeldung-theme` on `PATH`. The Windows
+Scoop package provides the same names plus `keypirinha-theme`. Keep
+`terminal-theme-switch` on `PATH` when using any integration.
 
 ## Usage
 
 ```sh
 terminal-theme-switch          # print the current mode and appearance
+terminal-theme-switch refresh  # apply the saved mode to every integration
 terminal-theme-switch cycle    # system -> dark -> light -> system
 terminal-theme-switch dark
 terminal-theme-switch light
@@ -40,15 +63,43 @@ terminal-theme-switch yazi     # print a YAZI_CONFIG_HOME overlay for this appea
 terminal-theme-switch alacritty # print the stable Alacritty theme import
 terminal-theme-switch eilmeldung # print an eilmeldung config directory for this appearance
 terminal-theme-switch keypirinha # apply the theme to a running Keypirinha (Windows)
+opencode-theme                 # launch OpenCode with the current theme
+yazi-theme                     # launch Yazi with the current theme
 alacritty-theme                # launch Alacritty with the current theme
 eilmeldung-theme               # launch eilmeldung with the current theme
 keypirinha-theme               # launch Keypirinha with the current theme (Windows)
 ```
 
 State file: `%LOCALAPPDATA%\terminal-theme-switch\state` on Windows,
-`$XDG_STATE_HOME/terminal-theme-switch/state` elsewhere. The previous
+`$XDG_STATE_HOME/terminal-theme-switch/state` (or
+`~/.local/state/terminal-theme-switch/state`) on Linux. The previous
 `terminal-theme` directory is still read once as a fallback so an existing saved
 mode is preserved.
+
+## Setup
+
+Each application keeps its own dark/light choice and theme files. Configure the
+pair once in that application's config, then start it through the launcher or
+load the integration. The switcher does not modify application code.
+
+| Application | Windows config | Linux config | Configure |
+| --- | --- | --- | --- |
+| WezTerm | `%USERPROFILE%\.config\wezterm\wezterm.lua` or `%USERPROFILE%\.wezterm.lua` | `$XDG_CONFIG_HOME/wezterm/wezterm.lua`, `~/.config/wezterm/wezterm.lua`, or `~/.wezterm.lua` | Load `integrations/wezterm.lua`; call `theme.setup(config, { dark = ..., light = ... })` |
+| Alacritty | `%APPDATA%\alacritty\alacritty.toml` | `$XDG_CONFIG_HOME/alacritty/alacritty.toml` or `~/.config/alacritty/alacritty.toml` | Put `terminal-theme-switch.toml` next to the theme files; launch `alacritty-theme` |
+| Yazi | `%APPDATA%\yazi\config\theme.toml` | `$XDG_CONFIG_HOME/yazi/theme.toml` or `~/.config/yazi/theme.toml` | Set `[flavor] dark = ...` and `light = ...`; launch `yazi-theme` |
+| Zellij | `%APPDATA%\Zellij\config\config.kdl` | `$XDG_CONFIG_HOME/zellij/config.kdl` or `~/.config/zellij/config.kdl` | Set `theme_dark`/`theme_light`; add the `integrations/zellij.kdl` keybind |
+| Neovim | `%LOCALAPPDATA%\nvim\lua\config\theme.lua` | `$XDG_CONFIG_HOME/nvim/lua/config/theme.lua` or `~/.config/nvim/lua/config/theme.lua` | Load the integration; call `setup({ dark = ..., light = ... })` |
+| OpenCode | `%USERPROFILE%\.config\opencode\opencode.json` | `$XDG_CONFIG_HOME/opencode/opencode.json` or `~/.config/opencode/opencode.json` | No edit; launch `opencode-theme` |
+| eilmeldung | `%APPDATA%\christo-auer\eilmeldung\config\config.toml` | `$XDG_CONFIG_HOME/eilmeldung/config.toml` or `~/.config/eilmeldung/config.toml` | Add `terminal-theme-switch.toml`; launch `eilmeldung-theme` |
+| Keypirinha | `%SCOOP%\apps\keypirinha\current\portable\Profile\User\keypirinha.ini` | Not available (Windows only) | Add `[terminal-theme-switch]`; launch `keypirinha-theme` |
+
+The paths above are the applications' default locations. This dotfiles setup
+points most apps at `~/Share/dotfiles/.config` through symlinks or launcher
+options, and Zellij resolves to `~/.config/zellij/config/config.kdl`;
+`zellij setup --check` prints the exact file it loads. The Alacritty theme
+directory is fixed to `~/Share/dotfiles/.config/alacritty/themes`; change
+`ALACRITTY_THEMES_DIR` in `terminal-theme-switch.py` if your dotfiles live
+elsewhere.
 
 ## Where theme values live
 
@@ -64,17 +115,24 @@ remains the single source of truth:
 - Alacritty, eilmeldung, and Keypirinha have no native dark/light pair, so they
   use the small sidecar or section shown below in the same config location.
 
-Theme files stay in each application's native theme directory (for example
-`~/.config/alacritty/themes` or eilmeldung's `themes` directory). The switcher
+Theme files stay in the directory the application or this setup expects (for
+example `~/.config/alacritty/themes` or eilmeldung's `themes` directory). The switcher
 only writes generated overlays to its state directory
 (`%LOCALAPPDATA%\terminal-theme-switch` on Windows,
-`$XDG_STATE_HOME/terminal-theme-switch` elsewhere). This keeps the app as the
+`$XDG_STATE_HOME/terminal-theme-switch` or
+`~/.local/state/terminal-theme-switch` on Linux). This keeps the app as the
 authority that validates names, leaves the install directory untouched, and
 means removing the switcher leaves every theme intact.
 
 ## Application integrations
 
 ### Alacritty
+
+The main config is normally `%APPDATA%\alacritty\alacritty.toml` on Windows and
+`$XDG_CONFIG_HOME/alacritty/alacritty.toml` or
+`~/.config/alacritty/alacritty.toml` on Linux. The palette directory is
+`~/Share/dotfiles/.config/alacritty/themes` in this setup; see the Setup table
+if your dotfiles live elsewhere.
 
 `terminal-theme-switch alacritty` writes the current WezTerm-compatible palette
 to a stable runtime file and prints its path:
@@ -120,12 +178,23 @@ Use these names instead of `opencode` and `yazi` when the applications should
 follow the shared theme at launch. Existing `OPENCODE_CLI_CONFIG_CONTENT` and
 `YAZI_CONFIG_HOME` values take precedence and are left unchanged.
 
+OpenCode's global config is normally
+`%USERPROFILE%\.config\opencode\opencode.json` on Windows and
+`$XDG_CONFIG_HOME/opencode/opencode.json` or
+`~/.config/opencode/opencode.json` on Linux. The launcher injects the theme
+through `OPENCODE_CLI_CONFIG_CONTENT`, so this file does not need a theme edit.
+
 `yazi-theme` requires the normal Yazi `theme.toml` to contain both `dark` and
 `light` entries in its `[flavor]` table. On Windows this file is normally
 `%APPDATA%\yazi\config\theme.toml`; on Linux it is
 `$XDG_CONFIG_HOME/yazi/theme.toml` or `~/.config/yazi/theme.toml`.
 
 ### eilmeldung
+
+The config is normally
+`%APPDATA%\christo-auer\eilmeldung\config\config.toml` on Windows and
+`$XDG_CONFIG_HOME/eilmeldung/config.toml` or
+`~/.config/eilmeldung/config.toml` on Linux.
 
 Start eilmeldung with:
 
@@ -142,8 +211,9 @@ light = "flexoki-light"
 ```
 
 The launcher builds a config directory under
-`%LOCALAPPDATA%\terminal-theme-switch\eilmeldung` (or
-`$XDG_STATE_HOME/terminal-theme-switch/eilmeldung`) and starts eilmeldung with
+`%LOCALAPPDATA%\terminal-theme-switch\eilmeldung` on Windows, or
+`$XDG_STATE_HOME/terminal-theme-switch/eilmeldung` (or
+`~/.local/state/terminal-theme-switch/eilmeldung`) on Linux, and starts eilmeldung with
 `--config-dir`, so `config.toml` itself is never rewritten. The generated file is
 a copy of your config with only the theme line changed; the state directory is
 per-user, so any login settings in `config.toml` keep the same ACL as the
@@ -161,6 +231,10 @@ dark = Vanta
 light = VantaNegate
 ```
 
+On a Scoop install this `Profile\User` directory lives under
+`%SCOOP%\persist\keypirinha\portable\Profile\User`; editing the `current`
+junction and the persist file are the same file.
+
 Every `dark`, `light`, `system`, `cycle`, or `refresh` command rewrites only the
 `theme =` value in `[gui]`. Keypirinha detects the change and applies it at
 runtime; there is no restart. `keypirinha-theme` applies the current theme and
@@ -169,7 +243,9 @@ starts Keypirinha when it is not already running.
 ### Neovim
 
 Install the `vanta` and `lauds` colorschemes, then create
-`~/.config/nvim/lua/config/theme.lua` with this loader:
+`$XDG_CONFIG_HOME/nvim/lua/config/theme.lua` or
+`~/.config/nvim/lua/config/theme.lua` on Linux, or
+`%LOCALAPPDATA%\nvim\lua\config\theme.lua` on Windows, with this loader:
 
 ```lua
 local M = {}
@@ -231,8 +307,10 @@ names is required; without them `setup` reports an error and does nothing.
 
 ### WezTerm
 
-In `~/.config/wezterm/wezterm.lua`, after defining `wezterm` and `config`, load
-the integration from the path reported by the CLI:
+In WezTerm's config file (`~/.config/wezterm/wezterm.lua` or `~/.wezterm.lua`
+on Linux; `%USERPROFILE%\.config\wezterm\wezterm.lua` or
+`%USERPROFILE%\.wezterm.lua` on Windows), after defining `wezterm` and `config`,
+load the integration from the path reported by the CLI:
 
 ```lua
 local theme
@@ -285,8 +363,11 @@ required; without them the integration logs an error and registers nothing.
 
 ### Zellij
 
-In `~/.config/zellij/config/config.kdl`, choose the dark and light themes used
-when `terminal-theme-switch` refreshes Zellij:
+In Zellij's config file (`%APPDATA%\Zellij\config\config.kdl` on Windows;
+`$XDG_CONFIG_HOME/zellij/config.kdl` or `~/.config/zellij/config.kdl` on Linux;
+this dotfiles setup uses `~/.config/zellij/config/config.kdl`), choose the dark
+and light themes used when `terminal-theme-switch` refreshes Zellij. Run
+`zellij setup --check` if unsure which file is loaded:
 
 ```kdl
 theme "vesper"
