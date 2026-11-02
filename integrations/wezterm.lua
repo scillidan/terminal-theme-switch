@@ -3,8 +3,8 @@ local wezterm = require("wezterm")
 
 local M = {}
 
-local light_scheme = "One Light (Gogh)"
-local dark_scheme = "Builtin Dark"
+local dark_scheme
+local light_scheme
 
 local state_root
 if wezterm.target_triple == "x86_64-pc-windows-msvc" then
@@ -73,7 +73,15 @@ local function cycle(window)
 	sync(window)
 end
 
-function M.setup(config)
+function M.setup(config, schemes)
+	schemes = schemes or {}
+	dark_scheme, light_scheme = schemes.dark, schemes.light
+	if not dark_scheme or not light_scheme then
+		wezterm.log_error(
+			"terminal-theme-switch: setup(config, { dark = ..., light = ... }) required"
+		)
+		return
+	end
 	config.color_scheme = dark_scheme
 	config.keys = config.keys or {}
 	table.insert(config.keys, {

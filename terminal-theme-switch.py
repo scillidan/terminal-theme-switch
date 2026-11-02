@@ -23,10 +23,27 @@ STATE_DIR = state_root / "terminal-theme-switch"
 STATE_FILE = STATE_DIR / "state"
 LEGACY_STATE_FILE = state_root / "terminal-theme" / "state"
 INTEGRATIONS_DIR = Path(__file__).parent / "integrations"
+USERHOME = Path(os.environ.get("USERHOME") or Path.home())
 ALACRITTY_THEMES_DIR = (
-    Path.home() / "Share" / "dotfiles" / ".config" / "alacritty" / "themes"
+    USERHOME / "Share" / "dotfiles" / ".config" / "alacritty" / "themes"
 )
-ALACRITTY_THEME_NAMES = {"dark": "builtin_dark.toml", "light": "one_light.toml"}
+ALACRITTY_SWITCH_FILE = ALACRITTY_THEMES_DIR / "terminal-theme-switch.toml"
+KEYPIRINHA_SECTION = "[terminal-theme-switch]"
+EILMELDUNG_SWITCH_FILE = "terminal-theme-switch.toml"
+
+
+def _read_theme_pair(path):
+    """Read the dark/light theme names from a tool-owned sidecar file."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return None, None
+    pair = {}
+    for line in text.splitlines():
+        match = re.match(r'\s*(dark|light)\s*=\s*"?([^"]*)"?\s*$', line)
+        if match:
+            pair[match.group(1)] = match.group(2).strip()
+    return pair.get("dark"), pair.get("light")
 
 
 def _read_mode(path):
@@ -109,11 +126,18 @@ def _replace_with_retry(temporary, target):
             time.sleep(0.01)
 
 
+def _write_text(path, text):
+    with path.open("w", encoding="utf-8", newline="") as file:
+        file.write(text)
+
+
 def alacritty_theme_source(appearance):
-    try:
-        name = ALACRITTY_THEME_NAMES[appearance]
-    except KeyError:
-        raise ValueError(f"unknown appearance: {appearance}") from None
+    if appearance not in ("dark", "light"):
+        raise ValueError(f"unknown appearance: {appearance}")
+    dark, light = _read_theme_pair(ALACRITTY_SWITCH_FILE)
+    name = light if appearance == "light" else dark
+    if not name:
+        raise SystemExit(f"alacritty: set dark/light in {ALACRITTY_SWITCH_FILE}")
     return ALACRITTY_THEMES_DIR / name
 
 
@@ -127,6 +151,161 @@ def sync_alacritty(appearance):
     shutil.copyfile(source, temporary)
     _replace_with_retry(temporary, target)
     return target
+
+
+def eilmeldung_config_dir():
+    xdg = os.environ.get("XDG_CONFIG_HOME")
+    if xdg:
+        return Path(xdg) / "eilmeldung"
+    home = Path.home() / ".config" / "eilmeldung"
+    if (home / "config.toml").is_file():
+        return home
+    if os.name == "nt":
+        base = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
+        return base / "christo-auer" / "eilmeldung" / "config"
+    return home
+
+
+def _theme_toml(text, name):
+    """Set [theme] base16_theme while preserving every other line."""
+    newline = "\r\n" if "\r\n" in text else "\n"
+    lines = text.splitlines()
+    header = None
+    end = len(lines)
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            if header is not None:
+                end = i
+                break
+            if stripped == "[theme]":
+                header = i
+    if header is None:
+        lines.extend(["", "[theme]", f'base16_theme = "{name}"'])
+    else:
+        for i in range(header + 1, end):
+            if re.match(r"\s*base16_theme\s*=", lines[i]):
+                indent = lines[i][: len(lines[i]) - len(lines[i].lstrip())]
+                lines[i] = f'{indent}base16_theme = "{name}"'
+                break
+        else:
+            lines.insert(header + 1, f'base16_theme = "{name}"')
+    return newline.join(lines).rstrip() + newline
+
+
+def eilmeldung_config_home(appearance=None):
+    config_dir = eilmeldung_config_dir()
+    source = config_dir / "config.toml"
+    if not source.is_file():
+        raise SystemExit(f"eilmeldung: cannot find {source}")
+
+    if appearance not in ("dark", "light"):
+        appearance = current_appearance()
+    # Follow the dotfiles symlink so the sidecar stays next to the real file.
+    real_dir = Path(os.path.realpath(source)).parent
+    sidecar = real_dir / EILMELDUNG_SWITCH_FILE
+    dark, light = _read_theme_pair(sidecar)
+    name = light if appearance == "light" else dark
+    if not name:
+        raise SystemExit(f"eilmeldung: set dark/light in {sidecar}")
+
+    overlay = STATE_DIR / "eilmeldung"
+    overlay.mkdir(parents=True, exist_ok=True)
+    target = overlay / "config.toml"
+    temporary = target.with_name(f".{target.name}.{os.getpid()}.tmp")
+    _write_text(temporary, _theme_toml(source.read_text(encoding="utf-8"), name))
+    _replace_with_retry(temporary, target)
+    themes = real_dir / "themes"
+    if themes.is_dir():
+        _replace_dir(overlay / "themes", themes)
+    return overlay
+
+
+def sync_eilmeldung(appearance):
+    if not (STATE_DIR / "eilmeldung" / "config.toml").is_file():
+        return None
+    try:
+        return eilmeldung_config_home(appearance)
+    except (OSError, SystemExit):
+        return None
+
+
+def keypirinha_config_file():
+    if os.name != "nt":
+        return None
+    base = os.environ.get("SCOOP") or (Path.home() / "scoop")
+    return (
+        Path(base)
+        / "apps"
+        / "keypirinha"
+        / "current"
+        / "portable"
+        / "Profile"
+        / "User"
+        / "keypirinha.ini"
+    )
+
+
+def _keypirinha_theme_pair(text):
+    dark = light = None
+    section = None
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            section = stripped
+            continue
+        if section != KEYPIRINHA_SECTION:
+            continue
+        match = re.match(r'(dark|light)\s*=\s*"?([^"]*)"?\s*$', stripped)
+        if match:
+            if match.group(1) == "dark":
+                dark = match.group(2).strip()
+            else:
+                light = match.group(2).strip()
+    return dark, light
+
+
+def _keypirinha_set_theme(text, value):
+    newline = "\r\n" if "\r\n" in text else "\n"
+    lines = text.splitlines()
+    gui = None
+    end = len(lines)
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            if gui is not None:
+                end = i
+                break
+            if stripped.lower() == "[gui]":
+                gui = i
+    if gui is None:
+        lines.extend(["", "[gui]", f"theme = {value}"])
+    else:
+        for i in range(gui + 1, end):
+            if re.match(r"\s*theme\s*=", lines[i]):
+                lines[i] = f"theme = {value}"
+                break
+        else:
+            lines.insert(gui + 1, f"theme = {value}")
+    return newline.join(lines).rstrip() + newline
+
+
+def sync_keypirinha(appearance):
+    path = keypirinha_config_file()
+    if path is None or not path.is_file():
+        return None
+    text = path.read_text(encoding="utf-8")
+    dark, light = _keypirinha_theme_pair(text)
+    value = light if appearance == "light" else dark
+    if not value:
+        return None
+    updated = _keypirinha_set_theme(text, value)
+    if updated == text:
+        return path
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    _write_text(temporary, updated)
+    _replace_with_retry(temporary, path)
+    return path
 
 
 def yazi_config_dir():
@@ -263,16 +442,29 @@ def refresh(mode):
     temporary.write_text(f"{mode}\n{appearance}\n", encoding="utf-8")
     _replace_with_retry(temporary, STATE_FILE)
     sync_alacritty(appearance)
+    sync_eilmeldung(appearance)
+    sync_keypirinha(appearance)
     sync_zellij(appearance)
     return appearance
 
 
 def main():
     command = sys.argv[1] if len(sys.argv) > 1 else "get"
-    if command not in (*MODES, "get", "refresh", "cycle", "path", "yazi", "alacritty"):
+    if command not in (
+        *MODES,
+        "get",
+        "refresh",
+        "cycle",
+        "path",
+        "yazi",
+        "alacritty",
+        "eilmeldung",
+        "keypirinha",
+    ):
         raise SystemExit(
             f"usage: {Path(sys.argv[0]).name} "
-            "[get|refresh|cycle|system|dark|light|path|yazi|alacritty]"
+            "[get|refresh|cycle|system|dark|light|path|yazi|alacritty|"
+            "eilmeldung|keypirinha]"
         )
 
     if command == "path":
@@ -287,6 +479,16 @@ def main():
 
     if command == "alacritty":
         print(sync_alacritty(current_appearance()))
+        return
+
+    if command == "eilmeldung":
+        print(eilmeldung_config_home())
+        return
+
+    if command == "keypirinha":
+        path = sync_keypirinha(current_appearance())
+        if path:
+            print(path)
         return
 
     mode = saved_mode()

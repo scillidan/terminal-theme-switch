@@ -9,9 +9,13 @@ else
 end
 local state_file = state_root .. "/terminal-theme-switch/state"
 local last_appearance
+local schemes = {}
 
 local function apply(appearance)
-	local scheme = appearance == "light" and "lauds" or "vanta"
+	local scheme = schemes[appearance]
+	if not scheme then
+		return
+	end
 	if vim.g.colors_name == scheme and vim.o.background == appearance then
 		return
 	end
@@ -47,7 +51,15 @@ function M.cycle()
 	run("cycle")
 end
 
-function M.setup()
+function M.setup(opts)
+	schemes = { dark = opts and opts.dark, light = opts and opts.light }
+	if not schemes.dark or not schemes.light then
+		vim.notify(
+			"terminal-theme-switch: setup({ dark = ..., light = ... }) required",
+			vim.log.levels.ERROR
+		)
+		return
+	end
 	run("refresh")
 	last_appearance = last_appearance or saved_appearance() or "dark"
 	apply(last_appearance)

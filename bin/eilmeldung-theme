@@ -1,0 +1,11 @@
+#!/bin/sh
+for arg in "$@"; do
+    case $arg in
+    -c | --config-dir | --config-dir=*) exec eilmeldung "$@" ;;
+    esac
+done
+home=$(terminal-theme-switch eilmeldung 2>/dev/null) || home=
+if [ -n "$home" ]; then
+    exec eilmeldung -c "$home" "$@"
+fi
+exec eilmeldung "$@"
