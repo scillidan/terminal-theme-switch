@@ -152,8 +152,8 @@ The source palettes stay in `~/Share/dotfiles/.config/alacritty/themes`. Pick
 the dark and light files in `themes/terminal-theme-switch.toml`:
 
 ```toml
-dark = "builtin_dark.toml"
-light = "one_light.toml"
+dark = "dark.toml"
+light = "light.toml"
 ```
 
 The files in that directory are generated from the installed WezTerm's
@@ -349,7 +349,7 @@ the two schemes you already use:
 if theme then
   local ok, err = pcall(theme.setup, config, {
     dark = "Builtin Dark",
-    light = "One Light (Gogh)",
+    light = "Selenized Light (Gogh)",
   })
   if not ok then
     wezterm.log_error("terminal-theme-switch: " .. tostring(err))
