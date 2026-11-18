@@ -1,0 +1,9 @@
+#!/bin/sh
+if [ -z "${OPENCODE_CLI_CONFIG_CONTENT:-}" ]; then
+    mode=$(terminal-theme-switch get 2>/dev/null | awk '{print $2}')
+    if [ -n "$mode" ]; then
+        OPENCODE_CLI_CONFIG_CONTENT="{\"theme\":{\"mode\":\"$mode\"}}"
+        export OPENCODE_CLI_CONFIG_CONTENT
+    fi
+fi
+exec opencode "$@"

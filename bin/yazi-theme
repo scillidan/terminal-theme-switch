@@ -1,0 +1,9 @@
+#!/bin/sh
+if [ -z "${YAZI_CONFIG_HOME:-}" ]; then
+    home=$(terminal-theme-switch yazi 2>/dev/null) || home=
+    if [ -n "$home" ]; then
+        YAZI_CONFIG_HOME=$home
+        export YAZI_CONFIG_HOME
+    fi
+fi
+exec yazi "$@"
