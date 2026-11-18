@@ -26,6 +26,7 @@ terminal-theme-switch dark
 terminal-theme-switch light
 terminal-theme-switch system
 terminal-theme-switch path     # print the plugin directory
+terminal-theme-switch yazi     # print a YAZI_CONFIG_HOME overlay for this appearance
 ```
 
 ## Integrations
@@ -36,6 +37,7 @@ Use `terminal-theme-switch path` as the plugin directory.
   config is built.
 - Neovim: load `integrations/nvim.lua` and call `setup()`.
 - Zellij: paste `integrations/zellij.kdl` into the `tmux` mode.
+- Yazi: set `YAZI_CONFIG_HOME` to the output of `terminal-theme-switch yazi`.
 
 State file: `%LOCALAPPDATA%\terminal-theme\state` on Windows,
 `$XDG_STATE_HOME/terminal-theme/state` elsewhere.
