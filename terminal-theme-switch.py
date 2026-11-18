@@ -128,7 +128,9 @@ def main():
         )
 
     if command == "path":
-        print(Path(__file__).resolve().parent)
+        # Do not resolve symlinks: on Windows this keeps Scoop's "current"
+        # junction stable across updates.
+        print(Path(os.path.abspath(__file__)).parent)
         return
 
     mode = saved_mode()
