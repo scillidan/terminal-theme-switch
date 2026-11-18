@@ -14,4 +14,12 @@ cp -R "$src/bin" "$data/"
 chmod +x "$data/bin/terminal-theme-switch"
 ln -sfn "$data/bin/terminal-theme-switch" "$bin/$name"
 
+# Zellij's Run action uses the Windows-style name on both platforms.
+cat >"$data/$name.cmd" <<EOF
+#!/bin/sh
+exec python3 "$data/$name.py" "\$@"
+EOF
+chmod +x "$data/$name.cmd"
+ln -sfn "$data/$name.cmd" "$bin/$name.cmd"
+
 "$bin/$name" path

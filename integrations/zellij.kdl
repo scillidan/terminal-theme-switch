@@ -1,5 +1,5 @@
 bind "T" {
-    Run "terminal-theme-switch" "cycle" {
+    Run "terminal-theme-switch.cmd" "cycle" {
         floating true
         close_on_exit true
     }
