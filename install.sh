@@ -11,7 +11,7 @@ mkdir -p "$data" "$bin"
 cp "$src/terminal-theme-switch.py" "$data/"
 cp -R "$src/integrations" "$data/"
 cp -R "$src/bin" "$data/"
-for launcher in terminal-theme-switch opencode-theme yazi-theme; do
+for launcher in terminal-theme-switch opencode-theme yazi-theme alacritty-theme; do
     chmod +x "$data/bin/$launcher"
     ln -sfn "$data/bin/$launcher" "$bin/$launcher"
 done
