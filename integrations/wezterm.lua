@@ -29,12 +29,24 @@ local function read_theme_state()
 	return mode, appearance
 end
 
-local function run(command)
-	local ok, _, stderr = wezterm.run_child_process({ "terminal-theme-switch", command })
-	if not ok then
-		wezterm.log_error("terminal-theme-switch: " .. (stderr or ""))
+local function command_args(command)
+	if wezterm.target_triple == "x86_64-pc-windows-msvc" then
+		return { "cmd.exe", "/c", "terminal-theme-switch", command }
 	end
-	return ok
+	return { "terminal-theme-switch", command }
+end
+
+local function run(command)
+	local called, ok, _, stderr = pcall(wezterm.run_child_process, command_args(command))
+	if not called then
+		wezterm.log_error("terminal-theme-switch: " .. tostring(ok))
+		return false
+	end
+	if not ok then
+		wezterm.log_error("terminal-theme-switch: " .. tostring(stderr))
+		return false
+	end
+	return true
 end
 
 local function sync(window)
